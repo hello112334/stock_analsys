@@ -15,7 +15,7 @@ https://github.com/mlouielu/twstock
 2. pandas_datareader
 https://github.com/pydata/pandas-datareader
 
-## Module
+## Modules
 1. Prophet：為Facebook提供的套件，用來預測系統，主要用時間序來做分析。
 
 ## Reference
