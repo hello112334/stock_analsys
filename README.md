@@ -17,6 +17,7 @@ https://github.com/pydata/pandas-datareader
 
 ## Analytics Modules
 1. Prophet：為Facebook提供的套件，用來預測系統，主要用時間序來做分析。
+https://facebook.github.io/prophet/
 
 ## Reference
 https://ithelp.ithome.com.tw/articles/10208534
