@@ -1,9 +1,7 @@
 # stock analytics 股市預測
-
-## 股市簡介
 有價值型投資，技術指標，短線、極短線、中長線、存股
 
-## Install Modules(pip)
+# Install Modules(pip)
 pip install -r requirements.txt
 
 ## DATA
