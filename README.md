@@ -22,3 +22,7 @@ https://github.com/pydata/pandas-datareader
 ## Reference
 https://ithelp.ithome.com.tw/articles/10208534
 https://github.com/lastsummer/learn_python_data_analysis/blob/master/06.stock/day29.ipynb
+https://www.finlab.tw/%E8%B6%85%E7%B0%A1%E5%96%AE-machine-learning-%E9%A0%90%E6%B8%AC%E8%82%A1%E5%83%B9/
+
+## Research Paper(Prophet)
+https://peerj.com/preprints/3190.pdf
