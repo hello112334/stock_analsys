@@ -14,7 +14,6 @@ import pandas_datareader as pdr
 import datetime as datetime
 from datetime import datetime as dtt
 
-
 # analysis
 from prophet import Prophet
 from sklearn import metrics
@@ -23,7 +22,7 @@ from sklearn import metrics
 # import pandas_datareader as pdr
 # df_2330 = pdr.DataReader('2330.TW', 'yahoo')
 
-# 這是抓取歷史資料
+# 上市編號``
 com_no = "2330"
 # datetime_from = [2000, 1]
 # get_twstock = twstock.Stock(com_no)
@@ -32,6 +31,8 @@ date_today = 0
 
 def get_history_yahoo():
     """
+    歷史資料抓取 YAHOO
+    --------
     參數名稱   描述
     Open      開盤價
     High      最高價
@@ -46,8 +47,8 @@ def get_history_yahoo():
 
 def get_history():
     """
-    twstock
-
+    歷史資料抓取 twstock
+    --------
     LIMIT: 3 times/5 seconds
     """
     print("[INFO] get_history")
@@ -75,10 +76,16 @@ def get_history():
     # plt.legend()
     # fig.savefig(f"./02_png/{com_no}_19800101_{date_today}_open_close.png")
 
-    # 
-    startTime = '2001-01-01'
-    endTime = '2022-12-13'
+    # 時間
+    startTime = '2001-01-01' # 開始
+    startTime_str = startTime.replace("-", "")
+
+    endTime = getToday2() # 終了
+    endTime_str = startTime.replace("-", "")
+
     df_stock = pdr.DataReader(f'{com_no}.TW', 'yahoo', start=startTime, end=endTime)
+    df_stock.to_csv(f"./01_obs/{com_no}_{startTime_str}_{endTime_str}.csv") # CSV
+
     new_df_2492 = pd.DataFrame(df_stock['Adj Close']).reset_index().rename(columns={'Date':'ds', 'Adj Close':'y'})
 
     # csv
@@ -87,9 +94,9 @@ def get_history():
 
     print("[INFO] analysis")
     # 
-    new_df_2492['y'] = np.log(new_df_2492['y'])
+    # new_df_2492['y'] = np.log(new_df_2492['y'])
 
-    # 定義模型
+    # 定義模型 Facebook
     model = Prophet()
 
     # 訓練模型
@@ -102,25 +109,45 @@ def get_history():
     forecast = model.predict(future)
 
     figure=model.plot(forecast)
-    figure.savefig(f"./02_png/{com_no}.png")
+    forecast.to_csv(f"./02_ft/{com_no}_{startTime_str}_{endTime_str}.csv") # CSV
+    figure.savefig(f"./03_png/{com_no}_{startTime_str}_{endTime_str}.png") # Plot
+
 
 def get_realtime():
+    """
+    抓取及時資料
+    --------
+
+    """
     get_stock_real = twstock.realtime.get('6207')
 
     # 抓取多個股票的方式 twstock.realtime.get(['2330', '2337', '2409'])
     get_stock_real
 
-def getToday():
+def getToday1():
+    """
+    
+    """
 
     tmp_today = dtt.today()
     tmp_res = f"{tmp_today.year}{tmp_today.month}{tmp_today.day}"
     return tmp_res
 
 
+def getToday2():
+    """
+    
+    """
+
+    tmp_today = dtt.today()
+    tmp_res = f"{tmp_today.year}-{tmp_today.month}-{tmp_today.day}"
+    return tmp_res
+
+
 if __name__ == "__main__":
 
     try:
-        date_today = getToday()
+        date_today = getToday1()
         get_history()
         
         # get_realtime()
