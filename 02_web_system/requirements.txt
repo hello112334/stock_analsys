@@ -1,0 +1,12 @@
+streamlit
+pandas
+numpy
+seaborn
+matplotlib
+streamlit-echarts
+Stocker
+Cython
+quandl==3.3.0
+pystan==2.17.0.0
+pytrends==4.3.0
+fbprophet==0.2.1
