@@ -3,7 +3,8 @@
 import quandl
 import pandas as pd
 import numpy as np
-import fbprophet
+# import fbprophet
+from prophet import Prophet as fbprophet
 import pytrends
 from pytrends.request import TrendReq
 
