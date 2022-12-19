@@ -164,13 +164,16 @@ def get_history_yahoo3(name, data_source, start, end):
             'td', {'class': 'Py(10px) Ta(start) Pend(10px)'})
         for div in soup.findAll('td', {'class': 'Py(10px) Pstart(10px)'}):
             # print(div.text.strip())
+            tmp_val = div.text.strip()
             if col == 0:
                 tmp_date = dtt.strptime(
                     getDate[count].text.strip(), '%b %d, %Y')  # Sep 30, 2014
                 stock[6].append(tmp_date)
                 count += 1
+            if col == 5:
+                tmp_val = div.text.strip().replace(',', '')
 
-            stock[col].append(div.text.strip())
+            stock[col].append(tmp_val)
             col += 1
             col = 0 if col == 6 else col
 
@@ -184,9 +187,13 @@ def get_history_yahoo3(name, data_source, start, end):
 
     yahoo_df = pd.DataFrame(
         {'Date': stock[6], 'Open': stock[0], 'High': stock[1], 'Low': stock[2], 'Close': stock[3], 'Adj Close': stock[4], 'Volumn': stock[5]})
+    yahoo_df = yahoo_df.replace("-", 0)
     yahoo_df = yahoo_df.sort_values(by='Date')
 
-    return yahoo_df
+
+    res_df = yahoo_df[(yahoo_df['Open'] != 0) & (yahoo_df['Adj Close'] != 0)]
+
+    return res_df
 
 
 def get_realtime():

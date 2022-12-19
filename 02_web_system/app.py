@@ -247,7 +247,7 @@ if __name__ == '__main__':
         st.header("1. read data")
         cols1 = st.columns(2)
         # 1. CSV
-        stock = pd.read_csv('./01_obs/2330_20010101_20221216.csv')
+        stock = pd.read_csv(f'./01_obs/{filename}')
         # stock['Date'] = pd.to_datetime(stock['Date'])
         stock_ana = stock.copy(deep=True)
         stock_ana.set_index('Date', inplace=True)
