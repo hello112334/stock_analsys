@@ -6,6 +6,9 @@
 # basic
 import datetime as datetime
 from datetime import datetime as dtt
+from datetime import date
+import time
+from dateutil.relativedelta import relativedelta
 
 # modules
 import matplotlib.pyplot as plt
@@ -16,18 +19,13 @@ import pandas as pd
 import twstock
 import pandas_datareader as pdr
 
-# add font
-# from matplotlib.font_manager import fontManager
-# fontManager.addfont('./TaipeiSansTCBeta-Regular.ttf')
-# plt.rc('font', family='Sans TC Beta')
+# scrawing
+import requests
+from bs4 import BeautifulSoup
 
 # analysis/analytic
 from prophet import Prophet
 from sklearn import metrics
-
-# pandas_datareader YAHOO
-# import pandas_datareader as pdr
-# df_2330 = pdr.DataReader('2330.TW', 'yahoo')
 
 # 上市編號
 com_no = "2330"
@@ -88,14 +86,18 @@ def get_history_yahoo2():
     """
     print("[INFO] get_history")
 
-    # 時間
-    startTime = '2001-01-01'  # 開始
+    # ----- 時間
+    # 開始
+    startTime = '2014-07-01'
     startTime_str = startTime.replace("-", "")
 
     # 終了
-    endTime = getToday(hyphen='yes')
-    endTime_str = getToday(hyphen='no')
+    endTime = '2018-08-01'
+    endTime_str = endTime.replace("-", "")
+    # endTime = getToday(hyphen='yes')
+    # endTime_str = getToday(hyphen='no')
 
+    # ----- Get Data
     df_stock = pdr.DataReader(
         f'{com_no}.TW', 'yahoo', start=startTime, end=endTime)
     df_stock.to_csv(
@@ -105,13 +107,10 @@ def get_history_yahoo2():
         columns={'Date': 'ds', 'Adj Close': 'y'})
 
     # csv
-    # stock_res = (get_stock_pd.close + get_stock_pd.open) / 2
-    # stock_res.to_csv(f"./01_data/{com_no}_19800101_{date_today}.csv")
+    stock_res = (get_stock_pd.close + get_stock_pd.open) / 2
+    stock_res.to_csv(f"./01_data/{com_no}_{startTime_str}_{endTime_str}.csv")
 
     print("[INFO] analysis")
-    #
-    # new_df['y'] = np.log(new_df['y'])
-
     # 定義模型 Facebook
     model = Prophet()
 
@@ -130,6 +129,64 @@ def get_history_yahoo2():
         f"./02_ft/{com_no}_{startTime_str}_{endTime_str}.csv")  # CSV
     figure.savefig(
         f"./03_png/{com_no}_{startTime_str}_{endTime_str}.png")  # Plot
+
+
+def get_history_yahoo3(name, data_source, start, end):
+    """note"""
+    print(f'GET YAHOO STOCK: {start}-{end}')
+
+    set_start = dtt.strptime(start, '%Y-%m-%d')
+    tmp_end = dtt.strptime(end, '%Y-%m-%d')
+    set_end = set_start + relativedelta(months=3)
+
+    headers = requests.utils.default_headers()
+    headers.update({
+        'accept': 'application/json',
+        'cache-control': 'no-cache',
+        'sec-ch-ua-platform': "Windows",
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+    })
+
+    stock = [[], [], [], [], [], [], []]
+    stop_flg = False
+    while set_end <= tmp_end:
+
+        start_time = int(time.mktime(set_start.timetuple()))  # 1404154800
+        end_time = int(time.mktime(set_end.timetuple()))  # 1533149999
+
+        gm_url = f'https://finance.yahoo.com/quote/{name}/history?period1={start_time}&period2={end_time}&interval=1d&frequency=1d&filter=history'
+        html_text = requests.get(gm_url, headers=headers).text
+        soup = BeautifulSoup(html_text, 'html.parser')
+
+        col = 0
+        count = 0
+        getDate = soup.findAll(
+            'td', {'class': 'Py(10px) Ta(start) Pend(10px)'})
+        for div in soup.findAll('td', {'class': 'Py(10px) Pstart(10px)'}):
+            # print(div.text.strip())
+            if col == 0:
+                tmp_date = dtt.strptime(
+                    getDate[count].text.strip(), '%b %d, %Y')  # Sep 30, 2014
+                stock[6].append(tmp_date)
+                count += 1
+
+            stock[col].append(div.text.strip())
+            col += 1
+            col = 0 if col == 6 else col
+
+        set_start = set_start + relativedelta(months=3)
+        set_end = set_end + relativedelta(months=3)
+        if stop_flg:
+            break
+        if set_end > tmp_end:
+            set_end = tmp_end
+            stop_flg = True
+
+    yahoo_df = pd.DataFrame(
+        {'Date': stock[6], 'Open': stock[0], 'High': stock[1], 'Low': stock[2], 'Close': stock[3], 'Adj Close': stock[4], 'Volumn': stock[5]})
+    yahoo_df = yahoo_df.sort_values(by='Date')
+
+    return yahoo_df
 
 
 def get_realtime():
@@ -159,11 +216,25 @@ def getToday(hyphen='no'):
     else:
         return f"{tmp_today.year}-{tmp_today.month}-{tmp_today.day}"
 
+
 if __name__ == "__main__":
 
     try:
         date_today = getToday()
-        get_history_yahoo2()
+        # get_history_yahoo2()
+
+        # -------------------------
+        startTime = '2014-07-01'
+        startTime_str = startTime.replace("-", "")
+
+        # 終了
+        endTime = '2018-08-01'
+        endTime_str = endTime.replace("-", "")
+
+        yahoo_df = get_history_yahoo3(
+            f'{com_no}.TW', 'yahoo', start=startTime, end=endTime)
+        
+        yahoo_df.to_csv(f"./01_obs/{com_no}_{startTime_str}_{endTime_str}.csv")
 
         # get_realtime()
 
