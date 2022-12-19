@@ -229,21 +229,21 @@ if __name__ == "__main__":
     try:
         date_today = getToday()
         # get_history_yahoo2()
+        # get_realtime()
 
         # -------------------------
-        startTime = '2014-07-01'
+        # 開始
+        startTime = '2000-01-01'
         startTime_str = startTime.replace("-", "")
 
         # 終了
-        endTime = '2018-08-01'
+        endTime = '2022-12-18'
         endTime_str = endTime.replace("-", "")
 
         yahoo_df = get_history_yahoo3(
             f'{com_no}.TW', 'yahoo', start=startTime, end=endTime)
         
         yahoo_df.to_csv(f"./01_obs/{com_no}_{startTime_str}_{endTime_str}.csv")
-
-        # get_realtime()
 
     except Exception as err:
         print(f"[INFO] {err}")

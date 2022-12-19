@@ -3,14 +3,22 @@
   Stock Analysis and Prediction 
 ===================================
 """
-import time
+# Basic
+from prophet import Prophet
+import pandas_datareader as pdr
+from matplotlib import pyplot as plt
+import matplotlib
 import streamlit as st
-import numpy as np
 import pandas as pd
+import numpy as np
+from datetime import datetime as dtt
+import time
+import warnings  # remove warnings
+warnings.filterwarnings('ignore')
+
+# Modules
 
 # Plot
-import matplotlib
-from matplotlib import pyplot as plt
 # from matplotlib.ticker import FuncFormatter
 # import seaborn as sns
 # import pickle
@@ -20,10 +28,8 @@ from matplotlib import pyplot as plt
 # from stocker import Stocker
 
 # get stock data
-import pandas_datareader as pdr
 
 # stock forecast model
-from prophet import Prophet
 
 
 # plot
@@ -36,7 +42,7 @@ st.set_page_config(layout="wide")
 com_no = ''
 startTime = ''
 endTime = ''
-filename = '2330_20140701_20180801.csv'
+filename = '2330_20000101_20221218.csv'
 
 # @st.cache
 
@@ -115,7 +121,6 @@ def reset_plot():
     matplotlib.rcParams['axes.titlesize'] = 14
     matplotlib.rcParams['text.color'] = 'k'
 
-
 def remove_weekends(dataframe):
     """
     Remove weekends from a dataframe
@@ -139,7 +144,7 @@ def remove_weekends(dataframe):
  # Graph the effects of altering the changepoint prior scale (cps)
 
 
-def changepoint_prior_analysis(stock, changepoint_priors=[0.001, 0.05, 0.1, 0.2], colors=['b', 'r', 'grey', 'gold']):
+def changepoint_prior_analysis(stock, changepoint_priors=[0.01, 0.05, 0.1, 0.2], colors=['b', 'r', 'grey', 'gold']):
 
     # Training and plotting with specified years of data
     train = stock.copy(deep=True)
@@ -147,15 +152,32 @@ def changepoint_prior_analysis(stock, changepoint_priors=[0.001, 0.05, 0.1, 0.2]
     # Iterate through all the changepoints and make models
     cols4 = st.columns(4)
 
+    min_date = dtt.strptime(min(stock['ds']), '%Y-%m-%d')
+    max_date = dtt.strptime(max(stock['ds']), '%Y-%m-%d')
+    delta = max_date - min_date
+    delta = delta.days
+
+    # Prophet Setting
+    weekly_seasonality = False
+    daily_seasonality = False
+    monthly_seasonality = True
+    yearly_seasonality = True
+    changepoints = None
+
+    # get predictions
     for i, prior in enumerate(changepoint_priors):
         # Select the changepoint
         changepoint_prior_scale = prior
 
         # Create and train a model with the specified cps
-        # model = create_model()
-        model = Prophet()
+        model = Prophet(daily_seasonality=daily_seasonality,
+                        weekly_seasonality=weekly_seasonality,
+                        yearly_seasonality=yearly_seasonality,
+                        changepoint_prior_scale=changepoint_prior_scale,
+                        changepoints=changepoints)
         model.fit(train)
-        future = model.make_future_dataframe(periods=180, freq='D')
+
+        future = model.make_future_dataframe(periods=365, freq='D')
 
         # Make a dataframe to hold predictions
         if i == 0:
@@ -163,16 +185,11 @@ def changepoint_prior_analysis(stock, changepoint_priors=[0.001, 0.05, 0.1, 0.2]
 
         future = model.predict(future)
 
-        # with cols4[i]:
-        #     st.header(f"{i}")
-        #     figure = model.plot(future)
-        #     st.pyplot(figure)
-
         # Fill in prediction dataframe
         predictions['%.3f_yhat_upper' % prior] = future['yhat_upper']
         predictions['%.3f_yhat_lower' % prior] = future['yhat_lower']
         predictions['%.3f_yhat' % prior] = future['yhat']
-    
+
     predictions['obs'] = train['y']
     st.header('prediction in 4 patterns')
     st.dataframe(predictions)
@@ -188,33 +205,34 @@ def changepoint_prior_analysis(stock, changepoint_priors=[0.001, 0.05, 0.1, 0.2]
     # Actual observations
     arrX = predictions['ds'].to_numpy()
     arrY = predictions['obs'].to_numpy()
-    ax.plot(arrX, arrY, 'ko', ms=2, label='Observations')
+    ax.plot(arrX, arrY, 'ko', ms=1, label='Observations')
 
     # Predictions
     color_dict = {prior: color for prior,
                   color in zip(changepoint_priors, colors)}
+
     for prior in changepoint_priors:
 
         # Plot the predictions themselves
         col_name = f"{prior:.3f}_yhat"
-        # arrX = predictions['ds'].to_numpy()
         arrY = predictions[col_name].to_numpy()
         arrY_upper = predictions[f'{col_name}_upper'].to_numpy()
         arrY_lower = predictions[f'{col_name}_lower'].to_numpy()
-        
+
         # line
         ax.plot(arrX, arrY, linewidth=1.2,
                 color=color_dict[prior], label=f'{col_name} prior scale', alpha=0.6)
 
         # Plot the uncertainty interval
         ax.fill_between(arrX, arrY_upper, arrY_lower, facecolor=color_dict[prior],
-                        alpha=0.3, edgecolor='k', linewidth=0.6)
+                        alpha=0.2, edgecolor='k', linewidth=0.3)
 
     # Plot labels
     plt.legend(loc=2, prop={'size': 10})
     plt.xlabel('Date')
     plt.ylabel('Stock Price ($)')
     plt.title('Effect of Changepoint Prior Scale')
+
     # plt.show()
 
     st.header("Changepoint_prior_analysis")
@@ -246,13 +264,13 @@ if __name__ == '__main__':
 
         st.header("1. read data")
         cols1 = st.columns(2)
-        # 1. CSV
+        # 1. from CSV
         stock = pd.read_csv(f'./01_obs/{filename}')
         # stock['Date'] = pd.to_datetime(stock['Date'])
         stock_ana = stock.copy(deep=True)
         stock_ana.set_index('Date', inplace=True)
 
-        # 2. DataReader
+        # 2. from DataReader
         # stock = pdr.DataReader(
         #         f'{com_no}.TW', 'yahoo', start=startTime, end='today')
 
@@ -260,29 +278,8 @@ if __name__ == '__main__':
             st.header("stock_ana")
             st.dataframe(stock_ana)
 
-        # stock = get_obs_data()
-        # stock_ft = get_ft_data()
-
         # # st.dataframe(stock)
         stock['Date'] = pd.to_datetime(stock['Date'])
-
-        # cols1 = st.columns(2)
-        # with cols1[0]:
-        #     st.header("obs")
-        #     st.dataframe(stock)
-        # with cols1[1]:
-        #     st.header("ft")
-        #     st.dataframe(stock_ft)
-
-        # stock['AVG'] = (stock['Open'] + stock['Close'])/2
-        # stock_ana = pd.concat([stock['Date'], stock['AVG'], stock_ft['yhat']], axis=1)
-        # stock_ana.set_index('Date', inplace = True)
-
-        #
-        # st.header("Analytic")
-        # st.dataframe(stock_ana)
-        # st.line_chart(stock_ana)
-
         new_df = pd.DataFrame(stock_ana['Adj Close']).reset_index().rename(
             columns={'Date': 'ds', 'Adj Close': 'y'})
 
@@ -292,32 +289,7 @@ if __name__ == '__main__':
 
         # stock_analytic
         changepoint_prior_analysis(new_df, changepoint_priors=[
-                                   0.001, 0.1, 0.5, 0.9])
-
-        # stock['price'] = (stock['Open'] + stock['Close'])/2
-        # stock_ana = pd.concat([stock['Date'], stock['price']], axis=1)
-        # stock['ds'] = stock['Date']
-        # stock['Date'] = pd.to_datetime(stock['Date'])
-        # stock['price'] =  pd.to_numeric(stock['price'])
-        # stock_ana.set_index('Date', inplace=True)
-
-        # dataframe to series
-        # price = stock_ana.squeeze()
-
-        # cols1 = st.columns(2)
-        # with cols1[0]:
-        #     st.header("stock data")
-        #     st.dataframe(stock)
-        # with cols1[1]:
-        #     st.header("ft data")
-        #     st.dataframe(price)
-
-        # getStocker = Stocker(stock)
-        # model, model_data, fig = getStocker.create_prophet_model(days=90, resample=False)
-        # fig = getStocker.changepoint_prior_analysis(changepoint_priors=[0.001, 0.05, 0.1, 0.2])
-
-        # st.write(fig)
-        # st.pyplot(fig)
+                                   0.001, 0.01, 0.1, 0.95])
 
     except Exception as err:
         print(f"[ERROR] {err}")
