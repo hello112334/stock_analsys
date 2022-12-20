@@ -4,19 +4,24 @@
 ===================================
 """
 # Basic
-from prophet import Prophet
+from bs4 import BeautifulSoup
+import requests
+from pytrends.request import TrendReq
 import pandas_datareader as pdr
-from matplotlib import pyplot as plt
-import matplotlib
-import streamlit as st
-import pandas as pd
+from prophet import Prophet
 import numpy as np
+import pandas as pd
+import altair as alt
+import streamlit as st
+import matplotlib
+from matplotlib import pyplot as plt
 from datetime import datetime as dtt
+import datetime
 import time
 import warnings  # remove warnings
 warnings.filterwarnings('ignore')
 
-# Modules
+pytrends = TrendReq(hl='en-US', tz=360)
 
 # Plot
 # from matplotlib.ticker import FuncFormatter
@@ -27,16 +32,9 @@ warnings.filterwarnings('ignore')
 # from modules.stocker import Stocker
 # from stocker import Stocker
 
-# get stock data
-
-# stock forecast model
-
-
 # plot
 # from streamlit_echarts import st_echarts
 # import plotly.figure_factory as ff
-
-st.set_page_config(layout="wide")
 
 ### Data Import ###
 com_no = ''
@@ -44,21 +42,11 @@ startTime = ''
 endTime = ''
 filename = '2330_20000101_20221218.csv'
 
-# @st.cache
 
-
+@st.cache
 def get_obs_data():
     """note"""
     tmp_df_database = pd.read_csv(f"./01_obs/{filename}")
-
-    return tmp_df_database
-
-# @st.cache
-
-
-def get_ft_data():
-    """note"""
-    tmp_df_database = pd.read_csv(f"./02_ft/{filename}")
 
     return tmp_df_database
 
@@ -120,6 +108,7 @@ def reset_plot():
     matplotlib.rcParams['ytick.labelsize'] = 8
     matplotlib.rcParams['axes.titlesize'] = 14
     matplotlib.rcParams['text.color'] = 'k'
+
 
 def remove_weekends(dataframe):
     """
@@ -191,8 +180,10 @@ def changepoint_prior_analysis(stock, changepoint_priors=[0.01, 0.05, 0.1, 0.2],
         predictions['%.3f_yhat' % prior] = future['yhat']
 
     predictions['obs'] = train['y']
-    st.header('prediction in 4 patterns')
-    st.dataframe(predictions)
+
+    # Check the data
+    # st.header('prediction in 4 patterns')
+    # st.dataframe(predictions)
 
     # Remove the weekends
     # predictions = remove_weekends(predictions)
@@ -227,6 +218,9 @@ def changepoint_prior_analysis(stock, changepoint_priors=[0.01, 0.05, 0.1, 0.2],
         ax.fill_between(arrX, arrY_upper, arrY_lower, facecolor=color_dict[prior],
                         alpha=0.2, edgecolor='k', linewidth=0.3)
 
+    #
+    ax.set_ylim(-50, 1200)
+
     # Plot labels
     plt.legend(loc=2, prop={'size': 10})
     plt.xlabel('Date')
@@ -235,10 +229,10 @@ def changepoint_prior_analysis(stock, changepoint_priors=[0.01, 0.05, 0.1, 0.2],
 
     # plt.show()
 
-    st.header("Changepoint_prior_analysis")
-
-    st.pyplot(fig)
-    fig.savefig(f"./03_png/test.png")
+    # st.header("Changepoint_prior_analysis")
+    # fig.savefig(f"./03_png/test.png")
+    # st.pyplot(fig)
+    return fig
 
 
 def add_sidebar():
@@ -246,50 +240,119 @@ def add_sidebar():
     st.sidebar.write(f"TEST PAGE")
 
 
+def get_google_trends(start, end):
+    """note"""
+    # scrawing
+    # url = f'https://trends.google.com/trends/explore?date={start}%20{end}'
+
+    # headers = requests.utils.default_headers()
+    # headers.update({
+    #     'accept': 'application/json',
+    #     'cache-control': 'no-cache',
+    #     'sec-ch-ua-platform': "Windows",
+    #     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+    # })
+    # html_text = requests.get(url, headers=headers).text
+    # soup = BeautifulSoup(html_text, 'html.parser')
+    # st.write(html_text)
+
+    # data = soup.findAll(
+    #     'div', {'class': 'progress-label-wrapper'})
+
+    # pytrends
+
+
+    st.write(data)
+
+def check_error():
+    """
+    1.
+    2.
+    3.
+    4. RMSE
+    """
+
+def check_Spearman():
+    """note"""
+
 if __name__ == '__main__':
 
     try:
         print('-'*80)
         print('[INFO] START')
 
+        st.set_page_config(layout="wide")
         st.title('Stock Analytic')
         # add_sidebar()
 
-        # init setting
-        com_no = '2330'
-        startTime = '2014-07-01'
-        endTime = '2018-08-01'
-
         # stock
+        st.header("1. Get Data")
 
-        st.header("1. read data")
-        cols1 = st.columns(2)
         # 1. from CSV
-        stock = pd.read_csv(f'./01_obs/{filename}')
-        # stock['Date'] = pd.to_datetime(stock['Date'])
-        stock_ana = stock.copy(deep=True)
-        stock_ana.set_index('Date', inplace=True)
+        stock = get_obs_data()
 
-        # 2. from DataReader
+        # 2. read from DataReader
         # stock = pdr.DataReader(
         #         f'{com_no}.TW', 'yahoo', start=startTime, end='today')
 
-        with cols1[0]:
-            st.header("stock_ana")
-            st.dataframe(stock_ana)
+        # 3. scrawing form yahoo
+        # reference to script
 
-        # # st.dataframe(stock)
-        stock['Date'] = pd.to_datetime(stock['Date'])
-        new_df = pd.DataFrame(stock_ana['Adj Close']).reset_index().rename(
-            columns={'Date': 'ds', 'Adj Close': 'y'})
+        # All data
+        st.header("stock")
+        st.dataframe(stock)
 
-        with cols1[1]:
-            st.header("new_df")
-            st.dataframe(new_df)
+        # init setting
+        # Stock number
+        com_no = '2330'
 
-        # stock_analytic
-        changepoint_prior_analysis(new_df, changepoint_priors=[
-                                   0.001, 0.01, 0.1, 0.95])
+        # analysis period set
+        dataset = []
+        # dataset = [{'start': '2014-07-01', 'end': '2018-07-01'},
+        #            {'start': '2018-07-01', 'end': '2022-12-16'},
+        #            {'start': '2000-07-01', 'end': '2022-12-16'}]
+
+        if dataset:
+            cols = st.columns(len(dataset))
+            for i in range(len(dataset)):
+                startTime = dataset[i]['start']
+                endTime = dataset[i]['end']
+
+                # filter data between start and end
+                stock_ana = stock[(stock['Date'] > startTime)
+                                  & (stock['Date'] < endTime)]
+                stock_ana.set_index('Date', inplace=True)
+
+                # convert col names
+                new_df = pd.DataFrame(stock_ana['Adj Close']).reset_index().rename(
+                    columns={'Date': 'ds', 'Adj Close': 'y'})
+
+                # stock_analytic
+                fig = changepoint_prior_analysis(new_df, changepoint_priors=[
+                    0.001, 0.01, 0.1, 1.000])
+
+                with cols[i]:
+                    st.header(f'{startTime} - {endTime}')
+                    st.pyplot(fig)
+
+        # Check data with event
+        st.header(f'{startTime} - {endTime}')
+        chart_data = stock[(stock['Date'] > '2000-07-01')
+                           & (stock['Date'] < '2022-12-16')]
+        chart_data = pd.concat(
+            [chart_data['Date'], chart_data['Adj Close']], axis=1)
+        chart_data.set_index('Date', inplace=True)
+
+        st.line_chart(chart_data)
+
+        # check keyword from google trends
+        cols2 = st.columns(2)
+        start = st.text_input('Start Date(yyyy-mm-dd)', '')
+        end = st.text_input('End Date(yyyy-mm-dd)', '')
+
+        if not end > start:
+            st.stop()
+        get_google_trends(start, end)
 
     except Exception as err:
         print(f"[ERROR] {err}")
