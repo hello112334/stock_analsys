@@ -1,9 +1,9 @@
 """
 ===================================
-  Stock Analysis and Prediction 
+  Stock Analysis and Prediction
 ===================================
 """
-# Basic
+# Modules
 from bs4 import BeautifulSoup
 import requests
 from pytrends.request import TrendReq
@@ -15,7 +15,10 @@ import altair as alt
 import streamlit as st
 import matplotlib
 from matplotlib import pyplot as plt
+from matplotlib.dates import DateFormatter
 from datetime import datetime as dtt
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
 import datetime
 import time
 import warnings  # remove warnings
@@ -23,18 +26,6 @@ warnings.filterwarnings('ignore')
 
 pytrends = TrendReq(hl='en-US', tz=360)
 
-# Plot
-# from matplotlib.ticker import FuncFormatter
-# import seaborn as sns
-# import pickle
-
-# Stocker: A Stock Analysis and Prediction Toolkit using Additive Models
-# from modules.stocker import Stocker
-# from stocker import Stocker
-
-# plot
-# from streamlit_echarts import st_echarts
-# import plotly.figure_factory as ff
 
 ### Data Import ###
 com_no = ''
@@ -43,7 +34,7 @@ endTime = ''
 filename = '2330_20000101_20221218.csv'
 
 
-@st.cache
+# @st.cache
 def get_obs_data():
     """note"""
     tmp_df_database = pd.read_csv(f"./01_obs/{filename}")
@@ -51,52 +42,9 @@ def get_obs_data():
     return tmp_df_database
 
 
-def show_data(data_x, data_y):
-    """note"""
-
-    option = {
-        "xAxis": {
-            "type": "category",
-            "data": [],
-        },
-        "yAxis": {"type": "value"},
-        "series": [
-            {
-                "data": [],
-                "type": "line"
-            }
-        ],
-    }
-
-    option['xAxis']['data'] = data_x
-    option['series']['data'] = data_y
-
-    st_echarts(
-        options=option, height="600px",
-    )
-
-
-def stock_analytic(df_stock):
-    """"""
-    # 定義模型 Facebook
-    model = Prophet()
-
-    # 訓練模型
-    model.fit(df_stock)
-
-    # 建構預測集
-    # forecasting for 1 year from now.
-    future = model.make_future_dataframe(periods=365)
-
-    # 進行預測
-    forecast = model.predict(future)
-
-    figure = model.plot(forecast)
-    st.pyplot(figure)
-
-
 @staticmethod
 def reset_plot():
+    """note"""
 
     # Restore default parameters
     matplotlib.rcParams.update(matplotlib.rcParamsDefault)
@@ -110,31 +58,10 @@ def reset_plot():
     matplotlib.rcParams['text.color'] = 'k'
 
 
-def remove_weekends(dataframe):
+def changepoint_prior_analysis(stock, changepoint_priors=[0.01, 0.05, 0.1, 0.2], colors=['b', 'r', 'grey', 'gold'], ft_days=365):
     """
-    Remove weekends from a dataframe
+    Graph the effects of altering the changepoint prior scale (cps)
     """
-
-    # Reset index to use ix
-    dataframe = dataframe.reset_index(drop=True)
-
-    weekends = []
-
-    # Find all of the weekends
-    for i, date in enumerate(dataframe['ds']):
-        if (date.weekday()) == 5 | (date.weekday() == 6):
-            weekends.append(i)
-
-    # Drop the weekends
-    dataframe = dataframe.drop(weekends, axis=0)
-
-    return dataframe
-
- # Graph the effects of altering the changepoint prior scale (cps)
-
-
-def changepoint_prior_analysis(stock, changepoint_priors=[0.01, 0.05, 0.1, 0.2], colors=['b', 'r', 'grey', 'gold']):
-
     # Training and plotting with specified years of data
     train = stock.copy(deep=True)
 
@@ -166,7 +93,7 @@ def changepoint_prior_analysis(stock, changepoint_priors=[0.01, 0.05, 0.1, 0.2],
                         changepoints=changepoints)
         model.fit(train)
 
-        future = model.make_future_dataframe(periods=365, freq='D')
+        future = model.make_future_dataframe(periods=ft_days, freq='D')
 
         # Make a dataframe to hold predictions
         if i == 0:
@@ -185,13 +112,10 @@ def changepoint_prior_analysis(stock, changepoint_priors=[0.01, 0.05, 0.1, 0.2],
     # st.header('prediction in 4 patterns')
     # st.dataframe(predictions)
 
-    # Remove the weekends
-    # predictions = remove_weekends(predictions)
-
     # Plot set-up
-    reset_plot()
+    # reset_plot()
     plt.style.use('fivethirtyeight')
-    fig, ax = plt.subplots(1, 1)
+    fig, ax = plt.subplots()
 
     # Actual observations
     arrX = predictions['ds'].to_numpy()
@@ -232,7 +156,7 @@ def changepoint_prior_analysis(stock, changepoint_priors=[0.01, 0.05, 0.1, 0.2],
     # st.header("Changepoint_prior_analysis")
     # fig.savefig(f"./03_png/test.png")
     # st.pyplot(fig)
-    return fig
+    return fig, predictions
 
 
 def add_sidebar():
@@ -261,19 +185,98 @@ def get_google_trends(start, end):
 
     # pytrends
 
-
     st.write(data)
 
-def check_error():
-    """
-    1.
-    2.
-    3.
-    4. RMSE
-    """
 
-def check_Spearman():
+def check_error(obs_ft_data, max_val, title):
+    """
+    1. plot
+    2. check correlation coefficient and slope
+    3. RMSE: Root Mean Squared Error
+    """
+    # st.dataframe(obs_ft_data)
+
+    # reset_plot()
+    # plt.style.use('fivethirtyeight')
+    fig, ax = plt.subplots()
+
+    arr_obs = obs_ft_data['obs'].to_numpy()
+    arr_ft = obs_ft_data['ft'].to_numpy()
+
+    
+    # RMSE
+    rmse = np.sqrt(mean_squared_error(arr_obs, arr_ft))
+    # print(f'RMSE : {rmse:.3f}')
+
+    # corr
+    corr = np.corrcoef(arr_obs, arr_ft)
+
+    # scatter obs ft
+    ax.scatter(arr_obs, arr_ft, c='#1f77b4', alpha=0.9, label=f'RMSE : {rmse:.3f}')
+
+    # slope
+    model_lr = LinearRegression(fit_intercept=False)
+    model_lr.fit(arr_obs.reshape(-1, 1), arr_ft.reshape(-1, 1))
+    slope = model_lr.coef_
+    ax.plot([0, max_val], [0, max_val], linewidth=1.0,
+            color='#FF1493', label=f'corr: {corr[0,1]}', alpha=1.0)
+    ax.plot([0, max_val], [0, max_val*slope], linewidth=1.0,
+            color='#888888', label=f'slope: {slope[0][0]}', alpha=0.8)
+
+    #
+    ax.set_xlim(0, max_val)
+    ax.set_ylim(0, max_val)
+
+    # plt.text(0.1*max_val, 0.3*max_val, f'corr: {corr}')
+
+    # Plot labels
+    plt.legend(loc=2, prop={'size': 10})
+    plt.xlabel('obs')
+    plt.ylabel('ft')
+    plt.title(f'{title}')
+    fig.tight_layout()
+
+    st.pyplot(fig)
+    plt.close()
+
+
+def Spearman_analysis():
     """note"""
+
+
+def show_obs_all(stock):
+    """note"""
+    # 1. plot
+    # fig, ax = plt.subplots()
+    # arrX = stock['Date'].to_numpy()
+    # arrY = stock['Adj Close'].to_numpy()
+
+    # # scatter obs ft
+    # ax.plot(arrX, arrY, 'ko', ms=1, label='Observations')
+
+    # # Plot labels
+    # plt.legend(loc=1, prop={'size': 10})
+    # plt.xlabel('obs')
+    # plt.ylabel('price')
+    
+    # plt.grid()
+    # myFmt = DateFormatter("%y")
+    # ax.xaxis.set_major_formatter(myFmt)
+    # fig.autofmt_xdate()
+    # fig.tight_layout()
+
+    # fig.savefig(
+    #     f"./03_png/all_period.png")  # Plot
+    # plt.close()
+    
+    # 2. Check data with event
+    # st.header(f'{startTime} - {endTime}')
+    chart_data = stock[(stock['Date'] > '2000-07-01')
+                        & (stock['Date'] < '2022-12-16')]
+    chart_data['Date'] = pd.to_datetime(chart_data['Date'])
+    chart_data = chart_data.set_index('Date')
+    st.line_chart(chart_data['Adj Close'])
+
 
 if __name__ == '__main__':
 
@@ -284,6 +287,10 @@ if __name__ == '__main__':
         st.set_page_config(layout="wide")
         st.title('Stock Analytic')
         # add_sidebar()
+
+        # init setting
+        com_no = '2330' # Stock number
+        # reset_plot()
 
         # stock
         st.header("1. Get Data")
@@ -299,18 +306,18 @@ if __name__ == '__main__':
         # reference to script
 
         # All data
-        st.header("stock")
-        st.dataframe(stock)
+        st.header(f"Stock Data: {com_no}")
 
-        # init setting
-        # Stock number
-        com_no = '2330'
+        with st.expander("See data"):
+            st.dataframe(stock)
+        show_obs_all(stock) # plot all period data
+        # raise Exception("test")
 
         # analysis period set
-        dataset = []
-        # dataset = [{'start': '2014-07-01', 'end': '2018-07-01'},
-        #            {'start': '2018-07-01', 'end': '2022-12-16'},
-        #            {'start': '2000-07-01', 'end': '2022-12-16'}]
+        # dataset = []
+        dataset = [{'start': '2014-07-01', 'end': '2018-07-01'},
+                   {'start': '2018-07-01', 'end': '2021-12-10'},
+                   {'start': '2020-07-01', 'end': '2021-12-10'}]
 
         if dataset:
             cols = st.columns(len(dataset))
@@ -328,33 +335,102 @@ if __name__ == '__main__':
                     columns={'Date': 'ds', 'Adj Close': 'y'})
 
                 # stock_analytic
-                fig = changepoint_prior_analysis(new_df, changepoint_priors=[
-                    0.001, 0.01, 0.1, 1.000])
+                changepoint_prior = [0.001, 0.01, 0.1, 1.000]
+                ft_day = 365  # 1 year
+                fig, predictions = changepoint_prior_analysis(
+                    new_df, changepoint_priors=changepoint_prior, ft_days=ft_day)
 
+                # check error
                 with cols[i]:
-                    st.header(f'{startTime} - {endTime}')
+                    st.write(f'#### {startTime} - {endTime}, ft: {ft_day} days')
                     st.pyplot(fig)
+                    plt.close()
 
-        # Check data with event
-        st.header(f'{startTime} - {endTime}')
-        chart_data = stock[(stock['Date'] > '2000-07-01')
-                           & (stock['Date'] < '2022-12-16')]
-        chart_data = pd.concat(
-            [chart_data['Date'], chart_data['Adj Close']], axis=1)
-        chart_data.set_index('Date', inplace=True)
+                    for prior in changepoint_prior:
+                        # st.dataframe(predictions)
+                        tmp_date = dtt.strptime(endTime, "%Y-%m-%d")
+                        endTime_ft = tmp_date + datetime.timedelta(days=ft_day)
+                        endTime_ft = endTime_ft.strftime("%Y-%m-%d")
+                        # print(f'LAST DAY: {endTime_ft}')
 
-        st.line_chart(chart_data)
+                        # OBS
+                        obs_data = stock[['Date', 'Adj Close']]
+                        obs_data = obs_data[(obs_data['Date'] > endTime) & (
+                            obs_data['Date'] < endTime_ft)]
+                        obs_data = obs_data.rename(
+                            columns={'Adj Close': 'obs', 'Date': 'ds'})
+                        obs_data['ds'] = pd.to_datetime(obs_data['ds'])
+                        obs_data.set_index('ds', inplace=True)
+                        obs_data = obs_data.reset_index(drop=True)
+
+                        # FT
+                        ft_data = predictions[['ds', f'{prior:.3f}_yhat']]
+                        ft_data = ft_data[(ft_data['ds'] > endTime) & (
+                            ft_data['ds'] < endTime_ft)]
+                        ft_data = ft_data.rename(
+                            columns={f'{prior:.3f}_yhat': 'ft'})
+                        ft_data.set_index('ds', inplace=True)
+                        ft_data = ft_data.reset_index(drop=True)
+
+                        # st.dataframe(obs_data)
+                        # st.dataframe(ft_data)
+
+                        all_data = pd.concat([obs_data, ft_data], axis=1)
+                        all_data = all_data[(all_data['obs'].notnull()) & (all_data['ft'].notnull()) ]
+                        max_val_obs = max(all_data['obs'])
+                        max_val_ft = max(all_data['ft'])
+                        max_val = max(max_val_obs, max_val_ft)
+
+                        max_val = int(max_val // 100) * 100 + 200
+                        check_error(all_data, max_val, f'{prior:.3f}_yhat')
 
         # check keyword from google trends
-        cols2 = st.columns(2)
-        start = st.text_input('Start Date(yyyy-mm-dd)', '')
-        end = st.text_input('End Date(yyyy-mm-dd)', '')
+        st.header('9.google trends')
+        # https://trends.google.com/trends/
 
-        if not end > start:
-            st.stop()
-        get_google_trends(start, end)
+        dataset = pd.DataFrame()
+        # keywords 5 words/1 time
+        list1 = ["machine", "Football", "New Year"]
+        list2 = ["TSMC", "Taiwan Semiconductor Manufacturing",
+                 "Semiconductor", "Manufacturing"]
+        list3 = ["Weather", "Earthquake", "Natural Disaster",
+                 "Central Meteorological Bureau of the Ministry of Communications"]
+        list4 = ["stock", "stock market",
+                 "Mark Six", "invoice"]
+        list5 = ["Quarantine", "oil prices", "vaccines", "EVA Air strike"]
+        list_all = [list1, list2, list3, list4, list5]
+
+        pytrends = TrendReq(hl='US')
+        for item in list_all:
+            pytrends.build_payload(item, timeframe='all', geo='TW')
+            df = pytrends.interest_over_time()
+            if not df.empty:
+                data = df.drop(labels=['isPartial'], axis='columns')
+                # dataset.append(data)
+                dataset = pd.concat([dataset, data], axis=1)
+
+        # result = pd.DataFrame(dataset)
+        st.dataframe(dataset)
+
+        ###
+        st.dataframe(new_df)
+        stock_obs = new_df.rename(columns={'ds': 'Date', 'y': 'Price'})
+
+        # coin_data = coin_data.drop(['Volume'], axis=1)
+        # coin_data.columns = ['Date', 'Price']
+        # trendslen = 0
+        # with open('price-daily.csv', 'r') as f:
+        #     trendslen = len(f.readlines())
+        # for i in range(0, trendslen - 1):
+        #     # shorten in 500 time
+        #     coin_data.loc[i, 'Price'] = coin_data.loc[i, 'Price'] / 500
+        #     coin_data.loc[i, 'Price'] = format(
+        #         coin_data.loc[i, 'Price'], '.3f')
+        # last = pd.concat([coin_data, trends_data], axis=1)
+        # last.to_csv('price-and-trends.csv', index=False)
 
     except Exception as err:
         print(f"[ERROR] {err}")
     finally:
         print('[INFO] END')
+        plt.close('all')
